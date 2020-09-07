@@ -1,0 +1,165 @@
+RCC_BASE			EQU		0x40023800
+AHB1ENR_OFFSET 		EQU		0x30
+RCC_AHB1ENR			EQU		RCC_BASE + AHB1ENR_OFFSET
+
+GPIOA_BASE			EQU		0x40020000
+GPIOA_MODER_OFFSET	EQU		0x00
+GPIOA_MODER			EQU		GPIOA_BASE + GPIOA_MODER_OFFSET
+
+GPIOA_ODR_OFFSET	EQU		0x14
+GPIOA_ODR			EQU		GPIOA_BASE + GPIOA_ODR_OFFSET
+
+GPIOA_BSRR_OFFSET	EQU		0x18
+GPIOA_BSRR			EQU		GPIOA_BASE	+ GPIOA_BSRR_OFFSET
+
+
+APB2ENR_OFFSET		EQU		0x44
+RCC_APB2ENR			EQU		RCC_BASE + APB2ENR_OFFSET
+
+
+ADC1_BASE			EQU		0x40012000
+
+ADC1_SR_OFFSET		EQU		0x00
+ADC1_SR				EQU		ADC1_BASE + ADC1_SR_OFFSET
+
+ADC1_CR2_OFFSET		EQU		0x08
+ADC1_CR2			EQU		ADC1_BASE + ADC1_CR2_OFFSET
+
+ADC1_SQR1_OFFSET	EQU		0x2C
+ADC1_SQR1			EQU		ADC1_BASE + ADC1_SQR1_OFFSET
+
+ADC1_SQR3_OFFSET	EQU		0x34
+ADC1_SQR3			EQU		ADC1_BASE +  ADC1_SQR3_OFFSET
+
+ADC1_DR_OFFSET		EQU		0x4C
+ADC1_DR				EQU		ADC1_BASE  + ADC1_DR_OFFSET
+	
+GPIOA_EN			EQU		1<<	0
+MODER5_OUT			EQU		1 << 10
+
+BSRR_5_SET			EQU		1 << 5
+BSRR_5_RESET		EQU		1 << 21
+	
+ADC1_EN				EQU		0x100
+MODER1_ANLG_SLT		EQU		0xC
+
+CR2_CNF				EQU		0x01     ;enbable ADC1
+SQR1_CNF			EQU	    0        ;conversion sequence length =1
+SQR3_CNF			EQU		1		 ;conversion sequence starts at ch1
+CR2_STRT_CNV		EQU		0x40000000  ;start conversion
+CR2_SW_TRIG			EQU		0
+ADC1_SR_FLG			EQU		0x02
+	
+SENS_THRH			EQU		3000
+	
+	
+					AREA |.text|,CODE,READONLY,ALIGN=2
+					THUMB
+					ENTRY
+					EXPORT __main
+
+__main
+					BL		GPIOA_Init
+					BL		ADC1_Init
+
+loop	
+					BL		ADC1_Read
+					BL		Led_Control
+					B       loop
+	
+	
+GPIOA_Init
+				;RCC->AHB1ENR	|=GPIOA_EN
+				LDR		R0,=RCC_AHB1ENR
+				LDR		R1,[R0]
+				ORR		R1,#GPIOA_EN
+				STR		R1,[R0]
+				
+				;GPIOA->MODER  |=MODER5_OUT
+				LDR		R0,=GPIOA_MODER
+				LDR		R1,[R0]
+				ORR		R1,#MODER5_OUT
+				STR		R1,[R0]
+				
+				;GPIOA->MODER |=MODER1_ANLG_SLT
+				LDR		R0,=GPIOA_MODER
+				LDR		R1,[R0]
+				ORR		R1,#MODER1_ANLG_SLT
+				STR		R1,[R0]
+				
+				BX		LR
+				
+ADC1_Init
+				;RCC->APB2ENR	|=ADC1_EN
+			    LDR		R0,=RCC_APB2ENR
+				LDR		R1,[R0]
+				ORR		R1,#ADC1_EN
+				STR		R1,[R0]
+				
+				;ADC1->CR2 |=SW_TRIG
+				LDR		R0,=ADC1_CR2
+				LDR		R1,[R0]
+				ORR		R1,#CR2_SW_TRIG
+				STR		R1,[R0]
+				
+				;ADC1->SQR3 =SQR3_CNF
+				LDR		R0,=ADC1_SQR3
+				MOV		R1,#SQR3_CNF
+				STR		R1,[R0]
+				
+				;ADC1->SQR1 =SQR1_CNF
+				
+				LDR		R0,=ADC1_SQR1
+				MOV		R1,#SQR1_CNF
+				STR		R1,[R0]
+				
+				;ADC1->CR2  |= CR2_CNF
+				LDR		R0,=ADC1_CR2
+				LDR		R1,[R0]
+				ORR		R1,#CR2_CNF
+				STR		R1,[R0]
+				
+				BX		LR
+				
+ADC1_Read
+				;ADC1->CR2 |=CR2_STRT_CNV
+				
+				LDR		R0,=ADC1_CR2
+				LDR		R1,[R0]
+				ORR		R1,#CR2_STRT_CNV
+				STR		R1,[R0]
+				
+				;while(!(ADC1->SR & 2)){}
+lp1				LDR		R0,=ADC1_SR
+				LDR		R1,[R0]
+				AND		R1,#ADC1_SR_FLG
+				CMP		R1,#0x00
+				BEQ		lp1
+				
+				LDR		R2,=ADC1_DR
+				LDR		R0,[R2]
+				BX		LR
+
+Led_Control
+				LDR		R1,=SENS_THRH
+				CMP		R0,R1
+				BGT		led_on
+				BLT		led_off
+				BX 		LR
+				
+led_off
+				LDR		R5,=GPIOA_BSRR
+				MOV		R1,#BSRR_5_RESET
+				STR		R1,[R5]
+				BX		LR
+
+led_on
+				LDR		R5,=GPIOA_BSRR
+				MOV		R1,#BSRR_5_SET
+				STR		R1,[R5]
+				BX		LR
+				
+				ALIGN
+				END
+				
+				

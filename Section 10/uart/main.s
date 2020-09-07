@@ -1,0 +1,231 @@
+;UART0_RX	 : PA0
+;UART0_TX	 : PA1
+
+
+SYSCTL_BASE						EQU		 0x400FE000
+
+RGGCGPIO_OFFSET					EQU		 0x608 
+SYSCTL_RCGCGPIO_R				EQU		 SYSCTL_BASE + RGGCGPIO_OFFSET
+
+RCGCUART_OFFSET					EQU		0x618
+SYSCTL_RCGCUART_R				EQU		SYSCTL_BASE + RCGCUART_OFFSET
+
+GPIOA_BASE						EQU		0x40004000
+	
+
+GPIOA_DEN_OFFSET				EQU		0x51C
+GPIOA_DEN_R						EQU		GPIOA_BASE + GPIOA_DEN_OFFSET
+
+GPIOA_AFSEL_OFFSET				EQU		0x420
+GPIOA_AFSEL_R					EQU		GPIOA_BASE + GPIOA_AFSEL_OFFSET
+
+GPIOA_PCTL_OFFSET				EQU     0x52C
+GPIOA_PCTL_R					EQU		GPIOA_BASE + GPIOA_PCTL_OFFSET
+
+
+UART0_BASE						EQU		0x4000C000
+
+UART0_DR_OFFSET					EQU		0x000
+UART0_DR_R						EQU		UART0_BASE + UART0_DR_OFFSET
+
+UART0_FR_OFFSET					EQU		0x018
+UART0_FR_R						EQU		UART0_BASE +  UART0_FR_OFFSET
+
+UART0_IBRD_OFFSET				EQU		0x024
+UART0_IBRD_R					EQU		UART0_BASE + UART0_IBRD_OFFSET
+	
+
+UART0_FBRD_OFFSET				EQU		0x028
+UART0_FBRD_R					EQU		UART0_BASE + UART0_FBRD_OFFSET
+
+UART0_LCRH_OFFSET				EQU		0x02C
+UART0_LCRH_R					EQU		UART0_BASE + UART0_LCRH_OFFSET
+
+UART0_CTL_OFFSET				EQU		0x030
+UART0_CTL_R						EQU		UART0_BASE + UART0_CTL_OFFSET
+
+UART0_IM_OFFSET					EQU		0x038
+UART0_IM_R						EQU		UART0_BASE + UART0_IM_OFFSET
+
+UART0_IFLS_OFFSET				EQU		0x034
+UART0_IFLS_R					EQU		UART0_BASE + UART0_IFLS_OFFSET
+	
+UART0_RIS_OFFSET				EQU		0x03C
+UART0_RIS_R						EQU		UART0_BASE  + UART0_RIS_OFFSET
+
+UART0_ICR_OFFSET				EQU		0x044
+UART0_ICR_R						EQU		UART0_BASE  +  UART0_ICR_OFFSET
+
+GPIOA_EN						EQU      1<<0
+UART0_EN						EQU		 1<<0
+
+UART_FR_RXFE					EQU		0x00000010  ; receive fifo empty ?
+UART_LCRH_WLEN_8				EQU		0x00000060  ;  8-bit word length
+UART_LCRH_FEN					EQU	    0x00000010  ; enable fifo
+UART_CTL_UARTEN					EQU		0x00000001  ;  enable uart
+
+UART_IM_RTIM					EQU		0x00000040
+	
+CR		EQU		0x0D
+BS		EQU		0x08
+LF		EQU		0x0A
+ESC		EQU		0x1B
+SPA		EQU		0x20
+DEL	    EQU		0x7F
+	
+
+							AREA   |.text|,CODE,READONLY,ALIGN=2
+							THUMB
+							ENTRY
+							EXPORT	__main
+
+
+__main
+							BL		UART_Init
+							MOV		R4,#'A'
+lp0							
+							MOV		R0,R4
+							BL		UART_WriteChar
+							ADD		R4,R4,#1
+							CMP		R4,#'Z'
+							BLS		lp0
+							
+							BL		newline
+							MOV		R0,#'!'
+							BL		UART_WriteChar
+	
+							
+
+
+
+newline
+			PUSH	{LR}
+			MOV		R0,#CR
+			BL		UART_WriteChar
+			MOV		R0,#LF
+			BL		UART_WriteChar
+			POP		{PC}
+
+UART_Init
+
+					PUSH 		{LR}
+					
+					;SYSCTL->RCGCUART |=UART0_EN
+					
+					LDR		R1,=SYSCTL_RCGCUART_R
+					LDR		R0,[R1]
+					ORR		R0,#UART0_EN
+					STR		R0,[R1]
+					
+					;SYSCTL->RCGCGPIO |=GPIOA_EN
+					
+					LDR		R1,=SYSCTL_RCGCGPIO_R
+					LDR		R0,[R1]
+					ORR		R0,#GPIOA_EN
+					STR		R0,[R1]
+					
+					
+					;GPIOA->AFSEL  |=0x03
+					
+					LDR		R1,=GPIOA_AFSEL_R
+					LDR		R0,[R1]
+					ORR		R0,#0x03
+					STR		R0,[R1]
+					
+					
+					;GPIOA->DEN	|=0x3
+					
+					LDR		R1,=GPIOA_DEN_R
+					LDR		R0,[R1]
+					ORR		R0,#0x03
+					STR		R0,[R1]
+										;GPIOA->PCTL &=~0x000000FF
+					
+					LDR		R1,=GPIOA_PCTL_R
+					LDR		R0,[R1]
+					BIC		R0,R0,#0x000000FF
+					ADD		R0,R0,#0x00000011
+					STR		R0,[R1]
+
+
+					LDR		R1,=UART0_CTL_R
+					LDR		R0,[R1]
+					BIC		R0,R0,#UART_CTL_UARTEN
+					STR		R0,[R1]
+					
+					
+					LDR		R1,=UART0_IBRD_R
+					;baudrates :  9600,115200 etc
+					; 16 000 000/ (16 * 115200) =  8.6805
+					MOV		R0,#27
+					STR		R0,[R1]
+					
+					LDR		R1,=UART0_FBRD_R
+					; (0.6805 *64 *0.5) = 44.052
+					MOV		R0,#8
+					STR		R0,[R1]
+					
+					
+					LDR		R1,=UART0_LCRH_R
+					LDR		R0,[R1]
+					BIC		R0,R0,#0xFF
+					
+					ADD		R0,R0,#(UART_LCRH_WLEN_8 + UART_LCRH_FEN)
+					STR		R0,[R1]
+					
+					LDR		R1,=UART0_CTL_R
+					LDR		R0,[R1]
+					ORR		R0,#UART_CTL_UARTEN
+					STR		R0,[R1]
+				
+
+
+					POP		{PC}
+					
+					
+UART_ReadChar
+				
+					LDR		R1,=UART0_FR_R
+					
+lp1					LDR		R2,[R1]
+					ANDS	R2,#0x0010
+					BNE		lp1
+					
+					LDR		R1,=UART0_DR_R
+					LDR		R0,[R1]
+					BX		LR
+
+UART_WriteChar
+					LDR		R1,=UART0_FR_R
+					
+lp2					LDR		R2,[R1]
+					ANDS	R2,#0x0020
+					BNE		lp2
+					
+					LDR		R1,=UART0_DR_R
+					STR		R0,[R1]
+					BX		LR
+					
+					ALIGN
+					END
+
+			
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

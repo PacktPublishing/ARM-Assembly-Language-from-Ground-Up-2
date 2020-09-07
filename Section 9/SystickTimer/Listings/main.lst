@@ -1,0 +1,684 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         
+    2 00000000         
+    3 00000000         
+    4 00000000 E000E010 
+                       NVIC_ST_CTRL_R
+                               EQU              0xE000E010
+    5 00000000 E000E014 
+                       NVIC_ST_RELOAD_R
+                               EQU              0xE000E014
+    6 00000000 E000E018 
+                       NVIC_ST_CURRENT_R
+                               EQU              0xE000E018
+    7 00000000         
+    8 00000000         
+    9 00000000 00010000 
+                       NVIC_ST_CTRL_COUNT
+                               EQU              0x00010000  ;count flag
+   10 00000000 00000004 
+                       NVIC_ST_CTRL_CLK_SRC
+                               EQU              0x00000004  ;clock source
+   11 00000000 00000002 
+                       NVIC_ST_CTRL_INTEN
+                               EQU              0x00000002  ;interrupt 
+   12 00000000 00000001 
+                       NVIC_ST_CTRL_ENABLE
+                               EQU              0x00000001  ;counter mode
+   13 00000000 00FFFFFF 
+                       NVIV_ST_RELOAD_M
+                               EQU              0x00FFFFFF  ;current load value
+                                                             
+   14 00000000         
+   15 00000000         
+   16 00000000 400FE000 
+                       SYSCRL_BASE
+                               EQU              0x400FE000
+   17 00000000 00000608 
+                       RGGCGPIO_OFFSET
+                               EQU              0x608
+   18 00000000 400FE608 
+                       SYSCRL_RGGCGPIO_R
+                               EQU              SYSCRL_BASE + RGGCGPIO_OFFSET
+   19 00000000         
+   20 00000000 40025000 
+                       GPIOF_BASE
+                               EQU              0x40025000
+   21 00000000 00000400 
+                       GPIOF_DIR_OFFSET
+                               EQU              0x400
+   22 00000000 40025400 
+                       GPIOF_DIR_R
+                               EQU              GPIOF_BASE + GPIOF_DIR_OFFSET
+   23 00000000         
+   24 00000000 0000051C 
+                       GPIOF_DEN_OFFSET
+                               EQU              0x51C
+   25 00000000 4002551C 
+                       GPIOF_DEN_R
+                               EQU              GPIOF_BASE + GPIOF_DEN_OFFSET
+   26 00000000         
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   27 00000000 000003FC 
+                       GPIOF_DATA_OFFSET
+                               EQU              0x3FC
+   28 00000000 400253FC 
+                       GPIOF_DATA_R
+                               EQU              GPIOF_BASE + GPIOF_DATA_OFFSET
+   29 00000000         
+   30 00000000         
+   31 00000000 00000020 
+                       GPIOF_EN
+                               EQU              1<<5
+   32 00000000 00000002 
+                       LED_RED EQU              1<<1
+   33 00000000 00000004 
+                       LED_BLUE
+                               EQU              1<<2
+   34 00000000 00000008 
+                       LED_GREEN
+                               EQU              1<<3
+   35 00000000         
+   36 00000000 00000000 
+                       RED_OFF EQU              0<<1
+   37 00000000         
+   38 00000000         
+   39 00000000 00027100 
+                       _10msDelay
+                               EQU              160000
+   40 00000000         
+   41 00000000         ; 16 000 000 = 1hz = 1000ms
+   42 00000000         ; 1000ms  =  1hz
+   43 00000000         ;    10ms  =  ?
+   44 00000000         ; ==>(10/1000) *1  = 1/100hz 
+   45 00000000         ; 16 000 000 * (1/100) = 160000
+   46 00000000         
+   47 00000000         
+   48 00000000         ;New Registers
+   49 00000000 00000510 
+                       GPIOF_PUR_OFFSET
+                               EQU              0x510
+   50 00000000 40025510 
+                       GPIOF_PUR_R
+                               EQU              GPIOF_BASE + GPIOF_PUR_OFFSET
+   51 00000000         
+   52 00000000         
+   53 00000000 00000520 
+                       GPIOF_LCK_OFFSET
+                               EQU              0x520
+   54 00000000 40025520 
+                       GPIOF_LCK_R
+                               EQU              GPIOF_BASE + GPIOF_LCK_OFFSET
+   55 00000000         
+   56 00000000 00000524 
+                       GPIOF_CR_OFFSET
+                               EQU              0x524
+   57 00000000 40025524 
+                       GPIOF_CR_R
+                               EQU              GPIOF_BASE + GPIOF_CR_OFFSET
+   58 00000000 4C4F434B 
+                       LOCK_KEY
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+                               EQU              0x4C4F434B  ; Unlocks the GPIO_
+                                                            CR register
+   59 00000000         
+   60 00000000 00F42400 
+                       ONESEC  EQU              16000000
+   61 00000000         
+   62 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
+   63 00000000                 THUMB
+   64 00000000                 ENTRY
+   65 00000000                 EXPORT           __main
+   66 00000000         
+   67 00000000         
+   68 00000000         __main
+   69 00000000 F000 F81B       BL               GPIO_Init
+   70 00000004 F000 F80F       BL               _led_on
+   71 00000008 F000 F829       BL               Systick_Init
+   72 0000000C         
+   73 0000000C         loop
+   74 0000000C F04F 0064       LDR              R0,=100
+   75 00000010 F000 F840       BL               SysTickWait10ms
+   76 00000014 F000 F807       BL               _led_on
+   77 00000018         
+   78 00000018 F04F 0064       LDR              R0,=100
+   79 0000001C F000 F83A       BL               SysTickWait10ms
+   80 00000020 F000 F806       BL               _led_off
+   81 00000024         
+   82 00000024 E7F2            B                loop
+   83 00000026         
+   84 00000026         _led_on
+   85 00000026 4921            LDR              R1,=GPIOF_DATA_R
+   86 00000028 F04F 0002       MOV              R0,#LED_RED
+   87 0000002C 6008            STR              R0,[R1]
+   88 0000002E 4770            BX               LR
+   89 00000030         
+   90 00000030         _led_off
+   91 00000030 491E            LDR              R1,=GPIOF_DATA_R
+   92 00000032 F04F 0000       MOV              R0,#RED_OFF
+   93 00000036 6008            STR              R0,[R1]
+   94 00000038 4770            BX               LR
+   95 0000003A         
+   96 0000003A         
+   97 0000003A         GPIO_Init
+   98 0000003A 491D            LDR              R1, =SYSCRL_RGGCGPIO_R
+   99 0000003C 6808            LDR              R0,[R1]
+  100 0000003E F040 0020       ORR              R0,R0,#GPIOF_EN
+  101 00000042 6008            STR              R0,[R1]
+  102 00000044 BF00            NOP
+  103 00000046 BF00            NOP
+  104 00000048         
+  105 00000048         
+  106 00000048 491A            LDR              R1,=GPIOF_DIR_R
+  107 0000004A 6808            LDR              R0,[R1]
+  108 0000004C F040 0002       ORR              R0,R0,#LED_RED
+  109 00000050 6008            STR              R0,[R1]
+  110 00000052         
+  111 00000052 4919            LDR              R1,=GPIOF_DEN_R
+  112 00000054 6808            LDR              R0,[R1]
+  113 00000056 F040 0002       ORR              R0,R0,#LED_RED
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  114 0000005A 6008            STR              R0,[R1]
+  115 0000005C         
+  116 0000005C 4770            BX               LR
+  117 0000005E         
+  118 0000005E         
+  119 0000005E         Systick_Init
+  120 0000005E 4917            LDR              R1,=NVIC_ST_CTRL_R
+  121 00000060 F04F 0000       MOV              R0,#0
+  122 00000064 6008            STR              R0,[R1]
+  123 00000066         
+  124 00000066 4916            LDR              R1,=NVIC_ST_RELOAD_R
+  125 00000068 F06F 407F       LDR              R0,=NVIV_ST_RELOAD_M
+  126 0000006C 6008            STR              R0,[R1]
+  127 0000006E         
+  128 0000006E 4915            LDR              R1,=NVIC_ST_CURRENT_R
+  129 00000070 F04F 0000       MOV              R0,#0
+  130 00000074 6008            STR              R0,[R1]
+  131 00000076         
+  132 00000076 4911            LDR              R1,=NVIC_ST_CTRL_R
+  133 00000078 F04F 0005       MOV              R0,#(NVIC_ST_CTRL_ENABLE +NVIC_
+ST_CTRL_CLK_SRC)
+  134 0000007C 6008            STR              R0,[R1]
+  135 0000007E         
+  136 0000007E 4770            BX               LR
+  137 00000080         
+  138 00000080         SysTick_Wait
+  139 00000080 490F            LDR              R1,=NVIC_ST_RELOAD_R
+  140 00000082 F1A0 0001       SUB              R0,#1
+  141 00000086 6008            STR              R0,[R1]
+  142 00000088 490C            LDR              R1,=NVIC_ST_CTRL_R
+  143 0000008A         lp1
+  144 0000008A 680B            LDR              R3,[R1]
+  145 0000008C F413 3380       ANDS             R3,R3,#NVIC_ST_CTRL_COUNT
+  146 00000090 D0FB            BEQ              lp1
+  147 00000092 4770            BX               LR
+  148 00000094         
+  149 00000094         SysTickWait10ms
+  150 00000094 B510            PUSH             {R4,LR}
+  151 00000096 0004            MOVS             R4,R0
+  152 00000098 D004            BEQ              __done
+  153 0000009A         
+  154 0000009A         lp2
+  155 0000009A 480B            LDR              R0,=_10msDelay
+  156 0000009C F7FF FFF0       BL               SysTick_Wait
+  157 000000A0 1E64            SUBS             R4,R4,#1
+  158 000000A2 D8FA            BHI              lp2
+  159 000000A4         
+  160 000000A4         __done
+  161 000000A4 E8BD 4010       POP              {R4,LR}
+  162 000000A8 4770            BX               LR
+  163 000000AA         
+  164 000000AA 00 00           ALIGN
+  165 000000AC                 END
+              400253FC 
+              400FE608 
+              40025400 
+              4002551C 
+              E000E010 
+              E000E014 
+
+
+
+ARM Macro Assembler    Page 5 
+
+
+              E000E018 
+              00027100 
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4.fp --apcs=int
+erwork --depend=.\objects\main.d -o.\objects\main.o -I.\RTE\_tm4c123 -IC:\Users
+\Israel\AppData\Local\Arm\Packs\ARM\CMSIS\5.5.1\CMSIS\Core\Include -IC:\Users\I
+srael\AppData\Local\Arm\Packs\Keil\TM4C_DFP\1.1.0\Device\Include\TM4C123 --pred
+efine="__EVAL SETA 1" --predefine="__UVISION_VERSION SETA 528" --predefine="_RT
+E_ SETA 1" --predefine="TM4C1230H6PM SETA 1" --list=.\listings\main.lst main.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 62 in file main.s
+   Uses
+      None
+Comment: .text unused
+GPIO_Init 0000003A
+
+Symbol: GPIO_Init
+   Definitions
+      At line 97 in file main.s
+   Uses
+      At line 69 in file main.s
+Comment: GPIO_Init used once
+SysTickWait10ms 00000094
+
+Symbol: SysTickWait10ms
+   Definitions
+      At line 149 in file main.s
+   Uses
+      At line 75 in file main.s
+      At line 79 in file main.s
+
+SysTick_Wait 00000080
+
+Symbol: SysTick_Wait
+   Definitions
+      At line 138 in file main.s
+   Uses
+      At line 156 in file main.s
+Comment: SysTick_Wait used once
+Systick_Init 0000005E
+
+Symbol: Systick_Init
+   Definitions
+      At line 119 in file main.s
+   Uses
+      At line 71 in file main.s
+Comment: Systick_Init used once
+__done 000000A4
+
+Symbol: __done
+   Definitions
+      At line 160 in file main.s
+   Uses
+      At line 152 in file main.s
+Comment: __done used once
+__main 00000000
+
+Symbol: __main
+   Definitions
+      At line 68 in file main.s
+   Uses
+      At line 65 in file main.s
+Comment: __main used once
+_led_off 00000030
+
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Relocatable symbols
+
+Symbol: _led_off
+   Definitions
+      At line 90 in file main.s
+   Uses
+      At line 80 in file main.s
+Comment: _led_off used once
+_led_on 00000026
+
+Symbol: _led_on
+   Definitions
+      At line 84 in file main.s
+   Uses
+      At line 70 in file main.s
+      At line 76 in file main.s
+
+loop 0000000C
+
+Symbol: loop
+   Definitions
+      At line 73 in file main.s
+   Uses
+      At line 82 in file main.s
+Comment: loop used once
+lp1 0000008A
+
+Symbol: lp1
+   Definitions
+      At line 143 in file main.s
+   Uses
+      At line 146 in file main.s
+Comment: lp1 used once
+lp2 0000009A
+
+Symbol: lp2
+   Definitions
+      At line 154 in file main.s
+   Uses
+      At line 158 in file main.s
+Comment: lp2 used once
+12 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+GPIOF_BASE 40025000
+
+Symbol: GPIOF_BASE
+   Definitions
+      At line 20 in file main.s
+   Uses
+      At line 22 in file main.s
+      At line 25 in file main.s
+      At line 28 in file main.s
+      At line 50 in file main.s
+      At line 54 in file main.s
+      At line 57 in file main.s
+
+GPIOF_CR_OFFSET 00000524
+
+Symbol: GPIOF_CR_OFFSET
+   Definitions
+      At line 56 in file main.s
+   Uses
+      At line 57 in file main.s
+Comment: GPIOF_CR_OFFSET used once
+GPIOF_CR_R 40025524
+
+Symbol: GPIOF_CR_R
+   Definitions
+      At line 57 in file main.s
+   Uses
+      None
+Comment: GPIOF_CR_R unused
+GPIOF_DATA_OFFSET 000003FC
+
+Symbol: GPIOF_DATA_OFFSET
+   Definitions
+      At line 27 in file main.s
+   Uses
+      At line 28 in file main.s
+Comment: GPIOF_DATA_OFFSET used once
+GPIOF_DATA_R 400253FC
+
+Symbol: GPIOF_DATA_R
+   Definitions
+      At line 28 in file main.s
+   Uses
+      At line 85 in file main.s
+      At line 91 in file main.s
+
+GPIOF_DEN_OFFSET 0000051C
+
+Symbol: GPIOF_DEN_OFFSET
+   Definitions
+      At line 24 in file main.s
+   Uses
+      At line 25 in file main.s
+Comment: GPIOF_DEN_OFFSET used once
+GPIOF_DEN_R 4002551C
+
+Symbol: GPIOF_DEN_R
+   Definitions
+      At line 25 in file main.s
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Absolute symbols
+
+   Uses
+      At line 111 in file main.s
+Comment: GPIOF_DEN_R used once
+GPIOF_DIR_OFFSET 00000400
+
+Symbol: GPIOF_DIR_OFFSET
+   Definitions
+      At line 21 in file main.s
+   Uses
+      At line 22 in file main.s
+Comment: GPIOF_DIR_OFFSET used once
+GPIOF_DIR_R 40025400
+
+Symbol: GPIOF_DIR_R
+   Definitions
+      At line 22 in file main.s
+   Uses
+      At line 106 in file main.s
+Comment: GPIOF_DIR_R used once
+GPIOF_EN 00000020
+
+Symbol: GPIOF_EN
+   Definitions
+      At line 31 in file main.s
+   Uses
+      At line 100 in file main.s
+Comment: GPIOF_EN used once
+GPIOF_LCK_OFFSET 00000520
+
+Symbol: GPIOF_LCK_OFFSET
+   Definitions
+      At line 53 in file main.s
+   Uses
+      At line 54 in file main.s
+Comment: GPIOF_LCK_OFFSET used once
+GPIOF_LCK_R 40025520
+
+Symbol: GPIOF_LCK_R
+   Definitions
+      At line 54 in file main.s
+   Uses
+      None
+Comment: GPIOF_LCK_R unused
+GPIOF_PUR_OFFSET 00000510
+
+Symbol: GPIOF_PUR_OFFSET
+   Definitions
+      At line 49 in file main.s
+   Uses
+      At line 50 in file main.s
+Comment: GPIOF_PUR_OFFSET used once
+GPIOF_PUR_R 40025510
+
+Symbol: GPIOF_PUR_R
+   Definitions
+      At line 50 in file main.s
+   Uses
+      None
+Comment: GPIOF_PUR_R unused
+
+
+
+ARM Macro Assembler    Page 3 Alphabetic symbol ordering
+Absolute symbols
+
+LED_BLUE 00000004
+
+Symbol: LED_BLUE
+   Definitions
+      At line 33 in file main.s
+   Uses
+      None
+Comment: LED_BLUE unused
+LED_GREEN 00000008
+
+Symbol: LED_GREEN
+   Definitions
+      At line 34 in file main.s
+   Uses
+      None
+Comment: LED_GREEN unused
+LED_RED 00000002
+
+Symbol: LED_RED
+   Definitions
+      At line 32 in file main.s
+   Uses
+      At line 86 in file main.s
+      At line 108 in file main.s
+      At line 113 in file main.s
+
+LOCK_KEY 4C4F434B
+
+Symbol: LOCK_KEY
+   Definitions
+      At line 58 in file main.s
+   Uses
+      None
+Comment: LOCK_KEY unused
+NVIC_ST_CTRL_CLK_SRC 00000004
+
+Symbol: NVIC_ST_CTRL_CLK_SRC
+   Definitions
+      At line 10 in file main.s
+   Uses
+      At line 133 in file main.s
+Comment: NVIC_ST_CTRL_CLK_SRC used once
+NVIC_ST_CTRL_COUNT 00010000
+
+Symbol: NVIC_ST_CTRL_COUNT
+   Definitions
+      At line 9 in file main.s
+   Uses
+      At line 145 in file main.s
+Comment: NVIC_ST_CTRL_COUNT used once
+NVIC_ST_CTRL_ENABLE 00000001
+
+Symbol: NVIC_ST_CTRL_ENABLE
+   Definitions
+      At line 12 in file main.s
+   Uses
+      At line 133 in file main.s
+Comment: NVIC_ST_CTRL_ENABLE used once
+NVIC_ST_CTRL_INTEN 00000002
+
+
+
+ARM Macro Assembler    Page 4 Alphabetic symbol ordering
+Absolute symbols
+
+
+Symbol: NVIC_ST_CTRL_INTEN
+   Definitions
+      At line 11 in file main.s
+   Uses
+      None
+Comment: NVIC_ST_CTRL_INTEN unused
+NVIC_ST_CTRL_R E000E010
+
+Symbol: NVIC_ST_CTRL_R
+   Definitions
+      At line 4 in file main.s
+   Uses
+      At line 120 in file main.s
+      At line 132 in file main.s
+      At line 142 in file main.s
+
+NVIC_ST_CURRENT_R E000E018
+
+Symbol: NVIC_ST_CURRENT_R
+   Definitions
+      At line 6 in file main.s
+   Uses
+      At line 128 in file main.s
+Comment: NVIC_ST_CURRENT_R used once
+NVIC_ST_RELOAD_R E000E014
+
+Symbol: NVIC_ST_RELOAD_R
+   Definitions
+      At line 5 in file main.s
+   Uses
+      At line 124 in file main.s
+      At line 139 in file main.s
+
+NVIV_ST_RELOAD_M 00FFFFFF
+
+Symbol: NVIV_ST_RELOAD_M
+   Definitions
+      At line 13 in file main.s
+   Uses
+      At line 125 in file main.s
+Comment: NVIV_ST_RELOAD_M used once
+ONESEC 00F42400
+
+Symbol: ONESEC
+   Definitions
+      At line 60 in file main.s
+   Uses
+      None
+Comment: ONESEC unused
+RED_OFF 00000000
+
+Symbol: RED_OFF
+   Definitions
+      At line 36 in file main.s
+   Uses
+      At line 92 in file main.s
+Comment: RED_OFF used once
+RGGCGPIO_OFFSET 00000608
+
+
+
+ARM Macro Assembler    Page 5 Alphabetic symbol ordering
+Absolute symbols
+
+
+Symbol: RGGCGPIO_OFFSET
+   Definitions
+      At line 17 in file main.s
+   Uses
+      At line 18 in file main.s
+Comment: RGGCGPIO_OFFSET used once
+SYSCRL_BASE 400FE000
+
+Symbol: SYSCRL_BASE
+   Definitions
+      At line 16 in file main.s
+   Uses
+      At line 18 in file main.s
+Comment: SYSCRL_BASE used once
+SYSCRL_RGGCGPIO_R 400FE608
+
+Symbol: SYSCRL_RGGCGPIO_R
+   Definitions
+      At line 18 in file main.s
+   Uses
+      At line 98 in file main.s
+Comment: SYSCRL_RGGCGPIO_R used once
+_10msDelay 00027100
+
+Symbol: _10msDelay
+   Definitions
+      At line 39 in file main.s
+   Uses
+      At line 155 in file main.s
+Comment: _10msDelay used once
+32 symbols
+381 symbols in table

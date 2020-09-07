@@ -1,0 +1,5 @@
+Hello friends,
+
+This section can be skipped if you are using Keil uVision 5.
+
+Regards.

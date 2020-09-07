@@ -1,0 +1,7 @@
+Please visit the section named "Set Up"  to see the lessons on how to setup the development  environment. 
+
+These videos are placed there because most students already have their development environment setup. The Set Up section shows you how to setup
+
+Keil uVision MDK 5  and STM32CubeIDE   any one of these IDEs can be used for the course.
+
+Regards.

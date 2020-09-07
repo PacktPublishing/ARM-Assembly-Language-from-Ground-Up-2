@@ -1,0 +1,168 @@
+;tim2 base add :0x40000000
+
+
+RCC_BASE			EQU		0x40023800
+
+AHB1ENR_OFFSET 		EQU		0x30
+RCC_AHB1ENR			EQU		RCC_BASE + AHB1ENR_OFFSET
+GPIOA_BASE			EQU		0x40020000
+GPIOA_MODER_OFFSET	EQU		0x00
+GPIOA_MODER			EQU		GPIOA_BASE + GPIOA_MODER_OFFSET
+GPIOA_ODR_OFFSET	EQU		0x14
+GPIOA_ODR			EQU		GPIOA_BASE + GPIOA_ODR_OFFSET
+	
+GPIOA_BSRR_OFFSET	EQU		0x18
+GPIOA_BSRR			EQU		GPIOA_BASE	+ GPIOA_BSRR_OFFSET
+		
+BSRR_5_SET			EQU		1 << 5
+BSRR_5_RESET		EQU		1 << 21
+	
+APB1ENR_OFFSET		EQU		0x40
+RCC_APB1ENR		EQU		RCC_BASE  +	 APB1ENR_OFFSET
+	
+
+TIM2_BASE			EQU		0x40000000
+
+TIM2_PSC_OFFSET		EQU		0x28
+TIM2_PSC			EQU		TIM2_BASE + TIM2_PSC_OFFSET
+
+TIM2_ARR_OFFSET		EQU		0x2C
+TIM2_ARR			EQU		TIM2_BASE  + TIM2_ARR_OFFSET
+
+TIM2_CNT_OFFSET		EQU		0x24
+TIM2_CNT			EQU		TIM2_BASE  + TIM2_CNT_OFFSET
+
+TIM2_CR1_OFFSET		EQU		0x00
+TIM2_CR1			EQU		TIM2_BASE + TIM2_CR1_OFFSET
+
+TIM2_SR_OFFSET		EQU		0x10
+TIM2_SR				EQU		TIM2_BASE + TIM2_SR_OFFSET
+	
+
+	
+	
+;PSC  = 16 000 000 / 1600  = 100 000  
+; 10000 /10000 =1HZ
+
+; CLCK_SRC /PSC_VAL  = X1
+; X1/ARR_VAL  =  delay
+
+PSC_CNF				EQU		1600 -1 	;clock src divided by 1600, new_clck = x1
+ARR_CNF				EQU		10000 -1 	; x1 divided by 10000
+CNT_CNF				EQU		0 			;cLEAR TIMER COUNTER
+CR1_CNF				EQU		1			;enable tim2
+
+TIM2_SR_FLG			EQU		0x01
+
+TIM2_EN				EQU		1<<0
+GPIOA_EN			EQU		1<<0
+	
+MODER5_OUT			EQU		1<<10
+	
+	
+	
+	
+	
+	
+	 				AREA	|.text|,CODE,READONLY,ALIGN=2
+					THUMB
+					ENTRY
+					EXPORT	__main
+	
+__main
+					BL		GPIOA_Init
+					BL		TIM2_Init
+					BL		LED_Blink
+		
+	
+	
+GPIOA_Init
+					LDR		R0,=RCC_AHB1ENR 
+					LDR		R1,[R0]
+					ORR		R1,#GPIOA_EN		
+					STR		R1,[R0]
+					
+
+					LDR		R0,=GPIOA_MODER 
+					LDR		R1,[R0]
+					ORR		R1,#MODER5_OUT
+					STR		R1,[R0]	
+					BX		LR
+					
+
+TIM2_Init
+
+				;RCC->APB1ENR | =TIM2_EN
+				LDR 	R0,=RCC_APB1ENR
+				LDR		R1,[R0]
+				ORR		R1,#TIM2_EN
+				STR		R1,[R0]
+				
+				;TIM2->PSC =PSC_CNF	
+				LDR		R0,=TIM2_PSC
+				MOVW	R1,#PSC_CNF
+				STR		R1,[R0]
+				
+				;TIM2->ARR	=ARR_CNF
+				LDR		R0,=TIM2_ARR
+				MOVW	R1,#ARR_CNF
+				STR		R1,[R0]
+				
+				;TIM2->CNT = CNT_CNF
+				LDR		R0,=TIM2_CNT
+				MOV		R1,#CNT_CNF
+				STR		R1,[R0]
+				
+				;TIM2->CR1  = CR1_CNF
+				LDR		R0,=TIM2_CR1
+				MOV		R1,#CR1_CNF
+				STR		R1,[R0]
+				
+				BX		LR
+
+__wait
+			   LDR		R1,=TIM2_SR
+			   
+			   ;while(!(TIM2->SR & TIM2_SR_FLG)){}
+lp1			   LDR	    R2,[R1]
+			   AND		R2,#TIM2_SR_FLG
+			   CMP		R2,#0x00
+			   BEQ		lp1
+			   
+			   ;Clear UIF
+			   ;TIM2->SR &=~1
+			   LDR	   R3,[R1]
+			   BIC	   R3,R3,#0x01	
+			   STR	   R3,[R1]
+			   BX		LR
+			  	
+				
+LED_Blink
+			  LDR		R4,=GPIOA_BSRR
+			  MOV		R1,#BSRR_5_RESET
+			  STR		R1,[R4]
+			  BL		__wait
+			  
+			  MOV		R1,#BSRR_5_SET
+			  STR		R1,[R4]
+			  BL		__wait
+			  
+			  BL		LED_Blink
+			  
+			  ALIGN
+			  END
+			  
+				
+				
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
